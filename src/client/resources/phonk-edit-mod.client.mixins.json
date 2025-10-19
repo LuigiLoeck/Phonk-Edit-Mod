@@ -1,9 +1,9 @@
 {
 	"required": true,
-	"package": "com.luigi.phonkeditmod.mixin.client",
+	"package": "com.luigi.phonkeditmod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"ExampleClientMixin"
+		"GameRendererAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

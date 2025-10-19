@@ -1,0 +1,19 @@
+{
+  "targets": [
+    "swap"
+  ],
+  "passes": [
+    {
+      "name": "blit",
+      "intarget": "minecraft:main",
+      "outtarget": "swap",
+      "program": "phonk-edit-mod:blit"
+    },
+    {
+      "name": "blit",
+      "intarget": "swap",
+      "outtarget": "minecraft:main",
+      "program": "phonk-edit-mod:blit_copy"
+    }
+  ]
+}

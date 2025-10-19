@@ -1,0 +1,11 @@
+{
+  "phonk1": { "sounds": [ "phonk-edit-mod:phonk1" ], "subtitle": "subtitles.phonkeditmod.phonk1" },
+  "phonk2": { "sounds": [ "phonk-edit-mod:phonk2" ], "subtitle": "subtitles.phonkeditmod.phonk2" },
+  "phonk3": { "sounds": [ "phonk-edit-mod:phonk3" ], "subtitle": "subtitles.phonkeditmod.phonk3" },
+  "phonk4": { "sounds": [ "phonk-edit-mod:phonk4" ], "subtitle": "subtitles.phonkeditmod.phonk4" },
+  "phonk5": { "sounds": [ "phonk-edit-mod:phonk5" ], "subtitle": "subtitles.phonkeditmod.phonk5" },
+  "phonk6": { "sounds": [ "phonk-edit-mod:phonk6" ], "subtitle": "subtitles.phonkeditmod.phonk6" },
+  "phonk7": { "sounds": [ "phonk-edit-mod:phonk7" ], "subtitle": "subtitles.phonkeditmod.phonk7" },
+  "phonk8": { "sounds": [ "phonk-edit-mod:phonk8" ], "subtitle": "subtitles.phonkeditmod.phonk8" },
+  "phonk9": { "sounds": [ "phonk-edit-mod:phonk9" ], "subtitle": "subtitles.phonkeditmod.phonk9" }
+}
