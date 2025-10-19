@@ -12,6 +12,11 @@ import net.minecraft.client.render.*;
 import org.joml.Matrix4f;
 import java.util.Random;
 
+// SATIN API
+import org.ladysnake.satin.api.managed.ManagedShaderEffect;
+import org.ladysnake.satin.api.managed.ShaderEffectManager;
+import org.ladysnake.satin.api.event.ShaderEffectRenderCallback;
+
 public class PhonkEditModClient implements ClientModInitializer {
 
 	// --- Configuração ---
@@ -57,6 +62,10 @@ public class PhonkEditModClient implements ClientModInitializer {
 	private int ticksMemeAtivo = 0;
 	private Identifier imagemMemeAtual;
 	private net.minecraft.client.sound.SoundInstance somMemeAtual = null;
+	
+	// SHADER SATIN
+	private static final ManagedShaderEffect GRAYSCALE_SHADER = ShaderEffectManager.getInstance()
+			.manage(Identifier.of("phonk-edit-mod", "shaders/post/grayscale.json"));
 
 	@Override
 	public void onInitializeClient() {
@@ -65,6 +74,13 @@ public class PhonkEditModClient implements ClientModInitializer {
 
 		// 2. Registra o "Ouvinte" da Renderização (HUD)
 		registerHudRenderer();
+		
+		// 3. Registra o shader de P&B
+		ShaderEffectRenderCallback.EVENT.register(tickDelta -> {
+			if (isMemeActive) {
+				GRAYSCALE_SHADER.render(tickDelta);
+			}
+		});
 	}
 
 	private void registerTickTimer() {
@@ -144,24 +160,7 @@ public class PhonkEditModClient implements ClientModInitializer {
 			int screenWidth = client.getWindow().getScaledWidth();
 			int screenHeight = client.getWindow().getScaledHeight();
 
-			// 1. EFEITO PRETO E BRANCO - Overlay com blend mode
-			RenderSystem.enableBlend();
-			RenderSystem.defaultBlendFunc();
-			RenderSystem.setShaderColor(0.3f, 0.3f, 0.3f, 0.7f); // Cinza escuro com transparência
-			
-			// Desenha um quad cobrindo a tela inteira
-			Matrix4f matrix = drawContext.getMatrices().peek().getPositionMatrix();
-			BufferBuilder bufferBuilder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION);
-			bufferBuilder.vertex(matrix, 0, screenHeight, 0);
-			bufferBuilder.vertex(matrix, screenWidth, screenHeight, 0);
-			bufferBuilder.vertex(matrix, screenWidth, 0, 0);
-			bufferBuilder.vertex(matrix, 0, 0, 0);
-			BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
-			
-			RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f); // Reset
-			RenderSystem.disableBlend();
-
-			// 2. Desenha a caveira
+			// Desenha a caveira (O P&B agora é feito pelo shader!)
 			if (imagemMemeAtual != null) {
 				int x = (screenWidth - MEME_RENDER_SIZE) / 2;
 				int y_center_point = (screenHeight * 3) / 4;

@@ -1,6 +1,14 @@
 {
-  "vertex": "blit",
-  "fragment": "blit",
+  "blend": {
+    "func": "add",
+    "srcrgb": "one",
+    "dstrgb": "zero"
+  },
+  "vertex": "phonk-edit-mod:blit",
+  "fragment": "phonk-edit-mod:grayscale",
+  "attributes": [
+    "Position"
+  ],
   "samplers": [
     {
       "name": "DiffuseSampler"
