@@ -6,14 +6,18 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.PositionedSoundInstance;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.ActionResult;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.render.*;
 import org.joml.Matrix4f;
+import org.lwjgl.glfw.GLFW;
 import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -26,15 +30,11 @@ import org.ladysnake.satin.api.managed.ShaderEffectManager;
 public class PhonkEditModClient implements ClientModInitializer {
 
 	// --- Configuração ---
-	private static final int MIN_TICKS_ENTRE_MEMES = 20 * 30; // 30 segundos
-	private static final int MAX_TICKS_ENTRE_MEMES = 20 * 60; // 60 segundos
-	private static final int DURACAO_MEME_TICKS = 20 * 3;     // 3 segundos
-	private static final int MEME_RENDER_SIZE = 48;
 	private static final int MEME_TEXTURE_SIZE = 512;
-	private static final long DELAY_ACAO_MS = 150; // 150ms de delay
-
-	// Chance de ativar em cada ação (0.0 = nunca, 1.0 = sempre)
-	private static final float CHANCE_ATIVAR_POR_ACAO = 0.30f; // 30% de chance
+	private static ModConfig config; // Configurações do mod
+	
+	// Keybinding para abrir menu
+	private static KeyBinding configKey;
 	
 	// Executor para delays
 	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -75,6 +75,7 @@ public class PhonkEditModClient implements ClientModInitializer {
 	private int ticksMemeAtivo = 0;
 	private Identifier imagemMemeAtual;
 	private net.minecraft.client.sound.SoundInstance somMemeAtual = null;
+	private float vidaAnterior = -1; // Para detectar dano
 	
 	// SHADER SATIN
 	private static final ManagedShaderEffect GRAYSCALE_SHADER = ShaderEffectManager.getInstance()
@@ -82,25 +83,52 @@ public class PhonkEditModClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		// 1. Registra o "Ouvinte" do Timer (Tick)
+		// 0. Carrega as configurações
+		config = ModConfig.load();
+		
+		// 1. Registra keybinding para abrir menu (tecla P)
+		configKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.phonk-edit-mod.config",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_P,
+				"category.phonk-edit-mod"
+		));
+		
+		// 2. Registra o "Ouvinte" do Timer (Tick)
 		registerTickTimer();
 
-		// 2. Registra o "Ouvinte" da Renderização (HUD)
+		// 3. Registra o "Ouvinte" da Renderização (HUD)
 		registerHudRenderer();
 		
-		// 3. Registra os triggers de ação
+		// 4. Registra os triggers de ação
 		registerActionTriggers();
 	}
 
 	private void registerTickTimer() {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			// Verifica se a tecla de config foi pressionada
+			if (configKey.wasPressed()) {
+				client.setScreen(new ConfigScreen(client.currentScreen, config));
+			}
+			
 			// Só roda se o jogador estiver no mundo
 			if (client.player == null) {
 				// Reseta o timer se o jogador sair do mundo
 				ticksParaProximoMeme = -1;
 				pararMeme(client); // Garante que o meme pare
+				vidaAnterior = -1;
 				return;
 			}
+
+			// Detecta quando o jogador toma dano
+			float vidaAtual = client.player.getHealth();
+			if (vidaAnterior > 0 && vidaAtual < vidaAnterior) {
+				// Jogador tomou dano!
+				if (config.habilitarTriggerTomarDano) {
+					tentarAtivarMemePorAcaoComDelay();
+				}
+			}
+			vidaAnterior = vidaAtual;
 
 			// NÃO CONTA TICKS SE O JOGO ESTIVER PAUSADO (menu aberto, mas não nosso InvisiblePauseScreen)
 			if (client.isPaused() && !(client.currentScreen instanceof InvisiblePauseScreen)) {
@@ -116,16 +144,19 @@ public class PhonkEditModClient implements ClientModInitializer {
 			}
 			// Se o meme não está rolando
 			else {
-				// Inicia o timer pela primeira vez
-				if (ticksParaProximoMeme == -1) {
-					ticksParaProximoMeme = getTempoAleatorio();
-				}
+				// Só conta timer se estiver habilitado na config
+				if (config.habilitarTimerAleatorio) {
+					// Inicia o timer pela primeira vez
+					if (ticksParaProximoMeme == -1) {
+						ticksParaProximoMeme = getTempoAleatorio();
+					}
 
-				ticksParaProximoMeme--;
+					ticksParaProximoMeme--;
 
-				// Hora de ativar o meme!
-				if (ticksParaProximoMeme <= 0) {
-					iniciarMeme(client);
+					// Hora de ativar o meme!
+					if (ticksParaProximoMeme <= 0) {
+						iniciarMeme(client);
+					}
 				}
 			}
 		});
@@ -135,15 +166,16 @@ public class PhonkEditModClient implements ClientModInitializer {
 
 	private void iniciarMeme(MinecraftClient client) {
 		isMemeActive = true;
-		ticksMemeAtivo = DURACAO_MEME_TICKS;
+		ticksMemeAtivo = config.duracaoEfeitoSegundos * 20; // Converte segundos para ticks
 		ticksParaProximoMeme = getTempoAleatorio();
 
 		// 1. PAUSA O JOGO
 		client.setScreen(new InvisiblePauseScreen());
 
-		// 2. Toca um Phonk Aleatório com pitch variável (0.2x a 2.0x)
+		// 2. Toca um Phonk Aleatório com pitch variável (da config)
 		SoundEvent som = MEME_SOUNDS[random.nextInt(MEME_SOUNDS.length)];
-		float pitchAleatorio = 0.2f + random.nextFloat() * 1.8f; // 0.2 a 2.0
+		float pitchRange = config.pitchMaximo - config.pitchMinimo;
+		float pitchAleatorio = config.pitchMinimo + random.nextFloat() * pitchRange;
 		this.somMemeAtual = PositionedSoundInstance.master(som, pitchAleatorio);
 		client.getSoundManager().play(this.somMemeAtual);
 
@@ -180,15 +212,16 @@ public class PhonkEditModClient implements ClientModInitializer {
 			if (imagemMemeAtual != null) {
 				int screenWidth = client.getWindow().getScaledWidth();
 				int screenHeight = client.getWindow().getScaledHeight();
+				int renderSize = config.tamanhoIcone; // Usa o tamanho da config
 				
-				int x = (screenWidth - MEME_RENDER_SIZE) / 2;
+				int x = (screenWidth - renderSize) / 2;
 				int y_center_point = (screenHeight * 3) / 4;
-				int y = y_center_point - (MEME_RENDER_SIZE / 2);
+				int y = y_center_point - (renderSize / 2);
 
 				drawContext.drawTexture(
 						imagemMemeAtual,
 						x, y,
-						MEME_RENDER_SIZE, MEME_RENDER_SIZE,
+						renderSize, renderSize,
 						0, 0,
 						MEME_TEXTURE_SIZE, MEME_TEXTURE_SIZE,
 						MEME_TEXTURE_SIZE, MEME_TEXTURE_SIZE
@@ -198,24 +231,32 @@ public class PhonkEditModClient implements ClientModInitializer {
 	}
 
 	private int getTempoAleatorio() {
-		return random.nextInt(MIN_TICKS_ENTRE_MEMES, MAX_TICKS_ENTRE_MEMES + 1);
+		int minTicks = config.minSegundosEntreEfeitos * 20;
+		int maxTicks = config.maxSegundosEntreEfeitos * 20;
+		return random.nextInt(minTicks, maxTicks + 1);
 	}
 	
 	private void registerActionTriggers() {
 		// Trigger ao atacar/matar entidade (mob, jogador, etc) - COM DELAY
 		AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			tentarAtivarMemePorAcaoComDelay();
+			if (config.habilitarTriggerAtaque) {
+				tentarAtivarMemePorAcaoComDelay();
+			}
 			return ActionResult.PASS;
 		});
 		
 		// Trigger APÓS quebrar bloco (quando o bloco realmente quebra)
 		PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
-			tentarAtivarMemePorAcaoComDelay();
+			if (config.habilitarTriggerQuebrarBloco) {
+				tentarAtivarMemePorAcaoComDelay();
+			}
 		});
 		
 		// Trigger ao colocar bloco / usar item - COM DELAY
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			tentarAtivarMemePorAcaoComDelay();
+			if (config.habilitarTriggerUsarBloco) {
+				tentarAtivarMemePorAcaoComDelay();
+			}
 			return ActionResult.PASS;
 		});
 	}
@@ -231,9 +272,9 @@ public class PhonkEditModClient implements ClientModInitializer {
 		MinecraftClient client = MinecraftClient.getInstance();
 		if (client.player == null) return;
 		
-		// Chance aleatória de ativar
-		if (random.nextFloat() < CHANCE_ATIVAR_POR_ACAO) {
-			// Agenda a ativação após 500ms
+		// Chance aleatória de ativar (da config)
+		if (random.nextFloat() < config.chanceAtivarPorAcao) {
+			// Agenda a ativação após o delay configurado
 			scheduler.schedule(() -> {
 				// IMPORTANTE: Executa na thread de renderização para evitar crashes
 				client.execute(() -> {
@@ -242,7 +283,7 @@ public class PhonkEditModClient implements ClientModInitializer {
 						iniciarMeme(client);
 					}
 				});
-			}, DELAY_ACAO_MS, TimeUnit.MILLISECONDS);
+			}, config.delayAcaoMs, TimeUnit.MILLISECONDS);
 		}
 	}
 }
