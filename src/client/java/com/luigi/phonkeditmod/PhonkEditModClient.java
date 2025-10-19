@@ -15,7 +15,6 @@ import java.util.Random;
 // SATIN API
 import org.ladysnake.satin.api.managed.ManagedShaderEffect;
 import org.ladysnake.satin.api.managed.ShaderEffectManager;
-import org.ladysnake.satin.api.event.ShaderEffectRenderCallback;
 
 public class PhonkEditModClient implements ClientModInitializer {
 
@@ -74,13 +73,6 @@ public class PhonkEditModClient implements ClientModInitializer {
 
 		// 2. Registra o "Ouvinte" da Renderização (HUD)
 		registerHudRenderer();
-		
-		// 3. Registra o shader de P&B
-		ShaderEffectRenderCallback.EVENT.register(tickDelta -> {
-			if (isMemeActive) {
-				GRAYSCALE_SHADER.render(tickDelta);
-			}
-		});
 	}
 
 	private void registerTickTimer() {
@@ -153,14 +145,14 @@ public class PhonkEditModClient implements ClientModInitializer {
 	}
 
 	private void registerHudRenderer() {
-		HudRenderCallback.EVENT.register((drawContext, tickDelta) -> {
+		HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
 			if (!isMemeActive) return;
 
 			MinecraftClient client = MinecraftClient.getInstance();
 			int screenWidth = client.getWindow().getScaledWidth();
 			int screenHeight = client.getWindow().getScaledHeight();
 
-			// Desenha a caveira (O P&B agora é feito pelo shader!)
+			// Desenha a caveira
 			if (imagemMemeAtual != null) {
 				int x = (screenWidth - MEME_RENDER_SIZE) / 2;
 				int y_center_point = (screenHeight * 3) / 4;
@@ -175,6 +167,9 @@ public class PhonkEditModClient implements ClientModInitializer {
 						MEME_TEXTURE_SIZE, MEME_TEXTURE_SIZE
 				);
 			}
+			
+			// Aplica o shader de grayscale DEPOIS de tudo renderizado (incluindo HUD)
+			GRAYSCALE_SHADER.render(tickCounter.getTickDelta(false));
 		});
 	}
 
