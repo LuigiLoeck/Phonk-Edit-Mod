@@ -177,22 +177,32 @@ public class ConfigScreen extends Screen {
 		).dimensions(centerX + 5, currentY, 145, 20).build());
 		currentY += spacing;
 
-		// Linha 3: Block Place + Damage Trigger
+		// Linha 3: Block Place/Interact + Use Item
 		this.addDrawableChild(ButtonWidget.builder(
-				Text.literal("Block Place: " + (config.habilitarTriggerUsarBloco ? "ON" : "OFF")),
+				Text.literal("Block Place/Interact: " + (config.habilitarTriggerUsarBloco ? "ON" : "OFF")),
 				button -> {
 					config.habilitarTriggerUsarBloco = !config.habilitarTriggerUsarBloco;
-					button.setMessage(Text.literal("Block Place: " + (config.habilitarTriggerUsarBloco ? "ON" : "OFF")));
+					button.setMessage(Text.literal("Block Place/Interact: " + (config.habilitarTriggerUsarBloco ? "ON" : "OFF")));
 				}
 		).dimensions(centerX - 150, currentY, 145, 20).build());
 		
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Use Item: " + (config.habilitarTriggerUsarItem ? "ON" : "OFF")),
+				button -> {
+					config.habilitarTriggerUsarItem = !config.habilitarTriggerUsarItem;
+					button.setMessage(Text.literal("Use Item: " + (config.habilitarTriggerUsarItem ? "ON" : "OFF")));
+				}
+		).dimensions(centerX + 5, currentY, 145, 20).build());
+		currentY += spacing;
+		
+		// Linha 4: Damage Trigger (centralizado)
 		this.addDrawableChild(ButtonWidget.builder(
 				Text.literal("Damage Trigger: " + (config.habilitarTriggerTomarDano ? "ON" : "OFF")),
 				button -> {
 					config.habilitarTriggerTomarDano = !config.habilitarTriggerTomarDano;
 					button.setMessage(Text.literal("Damage Trigger: " + (config.habilitarTriggerTomarDano ? "ON" : "OFF")));
 				}
-		).dimensions(centerX + 5, currentY, 145, 20).build());
+		).dimensions(centerX - 72, currentY, 145, 20).build());
 		currentY += spacing + 10;
 
 		// === AUDIO SETTINGS ===

@@ -5,6 +5,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.MinecraftClient;
@@ -442,12 +443,20 @@ public class PhonkEditModClient implements ClientModInitializer {
 			}
 		});
 		
-		// Trigger ao colocar bloco / usar item - COM DELAY
+		// Trigger ao interagir/colocar bloco (right-click em bloco) - COM DELAY
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
 			if (config.habilitarTriggerUsarBloco) {
 				tentarAtivarMemePorAcaoComDelay();
 			}
 			return ActionResult.PASS;
+		});
+		
+		// Trigger ao usar item (comer, beber, arco, etc) - COM DELAY
+		UseItemCallback.EVENT.register((player, world, hand) -> {
+			if (config.habilitarTriggerUsarItem) {
+				tentarAtivarMemePorAcaoComDelay();
+			}
+			return net.minecraft.util.TypedActionResult.pass(player.getStackInHand(hand));
 		});
 	}
 	

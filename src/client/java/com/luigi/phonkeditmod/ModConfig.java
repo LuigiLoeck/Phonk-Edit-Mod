@@ -28,7 +28,8 @@ public class ModConfig {
 	public boolean timerIgnoraChance = false; // Timer ignora a chance de trigger
 	public boolean habilitarTriggerAtaque = true;
 	public boolean habilitarTriggerQuebrarBloco = true;
-	public boolean habilitarTriggerUsarBloco = true;
+	public boolean habilitarTriggerUsarBloco = true; // Interagir/colocar blocos (right-click em bloco)
+	public boolean habilitarTriggerUsarItem = true; // Comer, beber, arco, etc
 	public boolean habilitarTriggerTomarDano = true;
 	
 	// Audio Settings
