@@ -3,15 +3,16 @@
 	"id": "phonk-edit-mod",
 	"version": "${version}",
 	"name": "Phonk Edit Mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Recreates the viral YouTube Shorts 'Phonk Edit' meme in Minecraft! Features random pauses with phonk music, grayscale filter, skull overlays, beat-synced zoom & blur effects, camera shake, and mobile format bars. Fully configurable!",
 	"authors": [
-		"Me!"
+		"luigi"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/LuigiLoeck/Phonk-Edit-Mod",
+		"sources": "https://github.com/LuigiLoeck/Phonk-Edit-Mod",
+		"issues": "https://github.com/LuigiLoeck/Phonk-Edit-Mod/issues"
 	},
-	"license": "CC0-1.0",
+	"license": "MIT",
 	"icon": "assets/phonk-edit-mod/icon.png",
 	"environment": "*",
 	"entrypoints": {
