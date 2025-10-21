@@ -16,22 +16,40 @@ public class ModConfig {
 			"phonk-edit-mod.json"
 	);
 
-	// Configurações
+	// Timer Settings
 	public int minSegundosEntreEfeitos = 30;
 	public int maxSegundosEntreEfeitos = 60;
 	public int duracaoEfeitoSegundos = 3;
-	public float chanceAtivarPorAcao = 0.30f; // 30%
 	public int delayAcaoMs = 150;
-	public int tamanhoIcone = 48; // pixels
-	public float pitchMinimo = 0.2f;
-	public float pitchMaximo = 2.0f;
 	
-	// Ativar/desativar triggers
+	// Trigger Settings
+	public float chanceAtivarPorAcao = 0.30f; // 30%
 	public boolean habilitarTimerAleatorio = true;
+	public boolean timerIgnoraChance = false; // Timer ignora a chance de trigger
 	public boolean habilitarTriggerAtaque = true;
 	public boolean habilitarTriggerQuebrarBloco = true;
 	public boolean habilitarTriggerUsarBloco = true;
 	public boolean habilitarTriggerTomarDano = true;
+	
+	// Audio Settings
+	public float pitchMinimo = 0.2f;
+	public float pitchMaximo = 2.0f;
+	public float volumeMusica = 1.0f;
+	
+	// Visual Effects Settings
+	public int tamanhoIcone = 48; // pixels
+	public boolean habilitarGrayscale = true;
+	public boolean habilitarBlur = true;
+	public boolean habilitarZoom = true;
+	public boolean habilitarShake = true;
+	public boolean habilitarBarrasPretas = true;
+	public boolean habilitarTextoMeme = true;
+	public boolean habilitarIconeCaveira = true;
+	
+	// Effect Intensity
+	public float intensidadeZoom = 1.0f; // Multiplier (0.5 - 2.0)
+	public float intensidadeBlur = 1.0f; // Multiplier (0.5 - 2.0)
+	public float intensidadeShake = 1.0f; // Multiplier (0.5 - 2.0)
 
 	public static ModConfig load() {
 		if (!CONFIG_FILE.exists()) {
