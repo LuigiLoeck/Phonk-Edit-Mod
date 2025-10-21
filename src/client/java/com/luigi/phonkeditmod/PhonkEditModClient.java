@@ -67,6 +67,25 @@ public class PhonkEditModClient implements ClientModInitializer {
 			SoundEvent.of(Identifier.of("phonk-edit-mod", "phonk9"))
 			// Adicione mais...
 	};
+	
+	// Textos chamativos para o topo (estilo meme)
+	private static final String[] MEME_TEXTS = new String[]{
+			"AQUELES QUE SABEM DISSO",
+			"QUANDO EU ENTRO NO JOGO",
+			"POV: VOCÊ É BOM DEMAIS",
+			"MOMENTOS ANTES DA CATÁSTROFE",
+			"MINECRAFT EDIT 🔥",
+			"ISSO VAI SER ÉPICO",
+			"SIGMA GRINDSET",
+			"COLD AS ICE ❄️",
+			"IRMÃO...",
+			"EU SOU INEVITÁVEL",
+			"LITERALLY ME",
+			"MAIN CHARACTER MOMENT",
+			"NINGUÉM ME SEGURA",
+			"É ASSIM QUE EU JOGO",
+			"LENDÁRIO"
+	};
 
 	// --- Variáveis de Estado ---
 	private final Random random = new Random();
@@ -76,10 +95,26 @@ public class PhonkEditModClient implements ClientModInitializer {
 	private Identifier imagemMemeAtual;
 	private net.minecraft.client.sound.SoundInstance somMemeAtual = null;
 	private float vidaAnterior = -1; // Para detectar dano
+	private String textoMemeAtual; // Texto chamativo atual
+	
+	// Efeitos de câmera
+	private static boolean applyCameraEffects = false;
+	private static float currentZoom = 1.0f;
+	private static float targetZoom = 1.0f;
+	private static float shakeIntensity = 0.0f;
+	private static float blurIntensity = 0.0f; // Intensidade do blur radial (0.0 a 1.0)
+	private static float effectProgress = 0.0f; // Progresso do efeito (0.0 a 1.0)
+	
+	// Sistema de batidas (beats)
+	private static float currentPitch = 1.0f; // Pitch atual da música
+	private static float beatProgress = 0.0f; // Progresso dentro da batida atual (0.0 a 1.0)
+	private static int ticksPerBeat = 10; // Ticks por batida (baseado no pitch)
 	
 	// SHADER SATIN
 	private static final ManagedShaderEffect GRAYSCALE_SHADER = ShaderEffectManager.getInstance()
 			.manage(Identifier.of("phonk-edit-mod", "shaders/post/grayscale.json"));
+	private static final ManagedShaderEffect RADIAL_BLUR_SHADER = ShaderEffectManager.getInstance()
+			.manage(Identifier.of("phonk-edit-mod", "shaders/post/radial_blur.json"));
 
 	@Override
 	public void onInitializeClient() {
@@ -138,8 +173,58 @@ public class PhonkEditModClient implements ClientModInitializer {
 			// Se o meme está rolando
 			if (isMemeActive) {
 				ticksMemeAtivo--;
+				
+				// Calcula progresso do efeito (0.0 a 1.0)
+				int duracaoTotal = config.duracaoEfeitoSegundos * 20;
+				effectProgress = 1.0f - ((float) ticksMemeAtivo / (float) duracaoTotal);
+				
+				// Sistema de batidas baseado no pitch da música
+				// Pitch mais alto = música mais rápida = mais batidas por segundo
+				// Pitch mais baixo = música mais lenta = menos batidas por segundo
+				
+				// BPM base: ~140 BPM (phonk típico) = ~2.33 batidas/segundo = ~8.5 ticks/batida
+				// Ajustamos pelo pitch: pitch 2.0 = 2x mais rápido = 2x mais batidas
+				float baseBPM = 140.0f;
+				float adjustedBPM = baseBPM * currentPitch;
+				float beatsPerSecond = adjustedBPM / 60.0f;
+				ticksPerBeat = (int) Math.max(3, 20.0f / beatsPerSecond); // Mínimo 3 ticks
+				
+				// Progresso dentro da batida atual (0.0 a 1.0, reseta a cada batida)
+				int ticksInCurrentBeat = (duracaoTotal - ticksMemeAtivo) % ticksPerBeat;
+				beatProgress = (float) ticksInCurrentBeat / (float) ticksPerBeat;
+				
+				// Curva de batida: pulso rápido no início, decai suavemente
+				// Usa uma curva exponencial inversa para efeito de "impacto"
+				float beatIntensity = (float) Math.pow(1.0f - beatProgress, 3.0); // Cúbica para decay rápido
+				
+				// Zoom pulsa com as batidas: 1.0 (normal) -> 1.3 (pico) em cada batida
+				targetZoom = 1.0f + (beatIntensity * 0.3f);
+				
+				// Blur pulsa junto com zoom: 0.0 -> 0.8 em cada batida
+				blurIntensity = beatIntensity * 0.8f;
+				
+				// Shake constante com picos nas batidas
+				// Shake base + extra na batida
+				float baseShake = 0.15f;
+				float beatShake = beatIntensity * 0.25f;
+				
+				// Intensifica no final (últimos 10%)
+				if (effectProgress > 0.9f) {
+					float finalIntensity = (effectProgress - 0.9f) * 10.0f; // 0.0 a 1.0
+					baseShake += finalIntensity * 0.3f; // Até +0.3
+					beatShake += finalIntensity * 0.2f; // Mais violento
+				}
+				
+				shakeIntensity = baseShake + beatShake;
+				
 				if (ticksMemeAtivo <= 0) {
 					pararMeme(client);
+				}
+				
+				// Zoom suave (interpolação)
+				if (Math.abs(currentZoom - targetZoom) > 0.001f) {
+					// Interpolação rápida para seguir as batidas
+					currentZoom += (targetZoom - currentZoom) * 0.3f;
 				}
 			}
 			// Se o meme não está rolando
@@ -178,9 +263,23 @@ public class PhonkEditModClient implements ClientModInitializer {
 		float pitchAleatorio = config.pitchMinimo + random.nextFloat() * pitchRange;
 		this.somMemeAtual = PositionedSoundInstance.master(som, pitchAleatorio);
 		client.getSoundManager().play(this.somMemeAtual);
+		
+		// Salva o pitch para calcular batidas
+		currentPitch = pitchAleatorio;
 
 		// 3. Seleciona uma Imagem Aleatória
 		imagemMemeAtual = MEME_IMAGES[random.nextInt(MEME_IMAGES.length)];
+		
+		// 4. Seleciona um Texto Aleatório
+		textoMemeAtual = MEME_TEXTS[random.nextInt(MEME_TEXTS.length)];
+		
+		// 5. Ativa efeitos de câmera (batidas de zoom + shake + blur)
+		applyCameraEffects = true;
+		currentZoom = 1.0f;
+		targetZoom = 1.0f;
+		shakeIntensity = 0.15f;
+		blurIntensity = 0.0f;
+		beatProgress = 0.0f;
 	}
 
 	private void pararMeme(MinecraftClient client) {
@@ -197,6 +296,16 @@ public class PhonkEditModClient implements ClientModInitializer {
 			client.getSoundManager().stop(this.somMemeAtual);
 			this.somMemeAtual = null;
 		}
+		
+		// 3. Desativa efeitos de câmera, blur e batidas
+		applyCameraEffects = false;
+		currentZoom = 1.0f;
+		targetZoom = 1.0f;
+		shakeIntensity = 0.0f;
+		blurIntensity = 0.0f;
+		effectProgress = 0.0f;
+		beatProgress = 0.0f;
+		currentPitch = 1.0f;
 	}
 
 	private void registerHudRenderer() {
@@ -204,14 +313,59 @@ public class PhonkEditModClient implements ClientModInitializer {
 			if (!isMemeActive) return;
 
 			MinecraftClient client = MinecraftClient.getInstance();
+			int screenWidth = client.getWindow().getScaledWidth();
+			int screenHeight = client.getWindow().getScaledHeight();
+			
+			// Aplica efeito de shake em TODA a tela (incluindo HUD)
+			if (applyCameraEffects && shakeIntensity > 0) {
+				float shakeX = (float) (Math.random() - 0.5) * shakeIntensity * 10.0f;
+				float shakeY = (float) (Math.random() - 0.5) * shakeIntensity * 10.0f;
+				
+				drawContext.getMatrices().push();
+				drawContext.getMatrices().translate(shakeX, shakeY, 0);
+			}
 			
 			// Aplica o shader de grayscale PRIMEIRO (em tudo que já foi renderizado)
 			GRAYSCALE_SHADER.render(tickCounter.getTickDelta(false));
 			
+			// Aplica blur radial se intensidade > 0 (distorção extrema no pico)
+			if (blurIntensity > 0.01f) {
+				// Atualiza uniform do shader com intensidade atual
+				RADIAL_BLUR_SHADER.setUniformValue("BlurIntensity", blurIntensity);
+				RADIAL_BLUR_SHADER.render(tickCounter.getTickDelta(false));
+			}
+			
+			// Calcula a largura das barras pretas (formato 9:16 - mobile)
+			// Mantém proporção vertical 9:16
+			int targetWidth = (screenHeight * 9) / 16;
+			int barWidth = (screenWidth - targetWidth) / 2;
+			
+			// Desenha barras pretas nas laterais (se necessário)
+			if (barWidth > 0) {
+				// Barra esquerda
+				drawContext.fill(0, 0, barWidth, screenHeight, 0xFF000000);
+				// Barra direita
+				drawContext.fill(screenWidth - barWidth, 0, screenWidth, screenHeight, 0xFF000000);
+			}
+			
+			// Desenha o texto chamativo no topo (colorido, em caixa alta)
+			if (textoMemeAtual != null) {
+				int textY = 30;
+				int textColor = 0xFFFFFF; // Branco
+				int shadowColor = 0x000000; // Preto
+				
+				// Desenha o texto centralizado com sombra
+				int textWidth = client.textRenderer.getWidth(textoMemeAtual);
+				int textX = (screenWidth - textWidth) / 2;
+				
+				// Sombra (offset)
+				drawContext.drawText(client.textRenderer, textoMemeAtual, textX + 2, textY + 2, shadowColor, false);
+				// Texto principal
+				drawContext.drawText(client.textRenderer, textoMemeAtual, textX, textY, textColor, false);
+			}
+			
 			// DEPOIS desenha a caveira colorida POR CIMA do shader
 			if (imagemMemeAtual != null) {
-				int screenWidth = client.getWindow().getScaledWidth();
-				int screenHeight = client.getWindow().getScaledHeight();
 				int renderSize = config.tamanhoIcone; // Usa o tamanho da config
 				
 				int x = (screenWidth - renderSize) / 2;
@@ -226,6 +380,11 @@ public class PhonkEditModClient implements ClientModInitializer {
 						MEME_TEXTURE_SIZE, MEME_TEXTURE_SIZE,
 						MEME_TEXTURE_SIZE, MEME_TEXTURE_SIZE
 				);
+			}
+			
+			// Restaura a matriz (pop) se aplicamos shake
+			if (applyCameraEffects && shakeIntensity > 0) {
+				drawContext.getMatrices().pop();
 			}
 		});
 	}
@@ -285,5 +444,30 @@ public class PhonkEditModClient implements ClientModInitializer {
 				});
 			}, config.delayAcaoMs, TimeUnit.MILLISECONDS);
 		}
+	}
+	
+	// Métodos estáticos para os mixins acessarem
+	public static boolean shouldApplyCameraEffects() {
+		return applyCameraEffects;
+	}
+	
+	public static float getZoomLevel() {
+		return currentZoom;
+	}
+	
+	public static float getShakeIntensity() {
+		return shakeIntensity;
+	}
+	
+	public static float getBlurIntensity() {
+		return blurIntensity;
+	}
+	
+	public static float getEffectProgress() {
+		return effectProgress;
+	}
+	
+	public static float getBeatProgress() {
+		return beatProgress;
 	}
 }

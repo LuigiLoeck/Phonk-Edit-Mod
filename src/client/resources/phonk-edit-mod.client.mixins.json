@@ -3,7 +3,9 @@
 	"package": "com.luigi.phonkeditmod.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"GameRendererAccessor"
+		"GameRendererAccessor",
+		"CameraAccessor",
+		"GameRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
