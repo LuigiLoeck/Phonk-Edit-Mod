@@ -8,10 +8,14 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.resource.ResourceManager;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.ActionResult;
@@ -23,6 +27,8 @@ import java.util.Random;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 // SATIN API
 import org.ladysnake.satin.api.managed.ManagedShaderEffect;
@@ -98,6 +104,7 @@ public class PhonkEditModClient implements ClientModInitializer {
 	private net.minecraft.client.sound.SoundInstance somMemeAtual = null;
 	private float vidaAnterior = -1; // Para detectar dano
 	private String textoMemeAtual; // Texto chamativo atual
+	private boolean customResourcesLoaded = false; // Flag para carregar recursos apenas uma vez
 	
 	// Efeitos de câmera
 	private static boolean applyCameraEffects = false;
@@ -128,6 +135,14 @@ public class PhonkEditModClient implements ClientModInitializer {
 		// 0. Carrega as configurações
 		config = ModConfig.load();
 		
+		// 0.1 Gera tutorial resource pack se não existir
+		TutorialResourcePackGenerator.generateIfNeeded();
+		
+		// 0.2 Inicializa APENAS os diretórios (não carrega texturas ainda)
+		CustomResourceManager.initDirectories();
+		// NOTA: Os recursos customizados serão carregados no primeiro tick do jogo,
+		// quando o contexto OpenGL já estiver pronto
+		
 		// 1. Registra keybinding para abrir menu (tecla O)
 		configKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
 				"key.phonk-edit-mod.config",
@@ -144,10 +159,67 @@ public class PhonkEditModClient implements ClientModInitializer {
 		
 		// 4. Registra os triggers de ação
 		registerActionTriggers();
+		
+		// 5. Registra listener para recarregar recursos quando F3+T for pressionado
+		ResourceManagerHelper.get(ResourceType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+			@Override
+			public Identifier getFabricId() {
+				return Identifier.of("phonk-edit-mod", "resource_reload");
+			}
+			
+			@Override
+			public void reload(ResourceManager manager) {
+				// Quando recursos são recarregados (F3+T), detecta novamente sons customizados
+				System.out.println("[Phonk Edit Mod] Resources recarregados! Re-detectando sons customizados...");
+				
+				// Primeiro detecta arquivos inválidos
+				int audioErrors = CustomResourceManager.detectInvalidAudioFiles();
+				
+				// Depois detecta sons no sounds.json
+				CustomSoundDetector.detectCustomSounds();
+				
+				// Recarrega imagens customizadas
+				CustomResourceManager.loadCustomResources();
+				
+				// Mostra toast de notificação
+				MinecraftClient client = MinecraftClient.getInstance();
+				if (client != null && client.player != null) {
+					// Contagem real: sons no JSON menos os inválidos
+					int totalSoundsInJson = CustomSoundDetector.getCustomSoundCount();
+					int validAudioCount = Math.max(0, totalSoundsInJson - audioErrors);
+					int imageCount = CustomResourceManager.getCustomImages().size();
+					int imageErrors = CustomResourceManager.getLastImageErrors();
+					
+					// Usa método centralizado para mostrar notificações
+					showResourceNotifications(validAudioCount, audioErrors, imageCount, imageErrors);
+				}
+			}
+		});
 	}
 
 	private void registerTickTimer() {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			// Carrega recursos customizados no primeiro tick (quando OpenGL está pronto)
+			if (!customResourcesLoaded && client.player != null) {
+				try {
+					// 1. Ativa o tutorial pack automaticamente (se existir)
+					TutorialResourcePackGenerator.enablePackAutomatically();
+					
+					// 2. Carrega recursos customizados (imagens PNG)
+					CustomResourceManager.loadCustomResources();
+					
+					// 3. Detecta sons customizados via resource packs
+					CustomSoundDetector.detectCustomSounds();
+					
+					customResourcesLoaded = true;
+					System.out.println("[Phonk Edit Mod] Recursos customizados carregados com sucesso!");
+				} catch (Exception e) {
+					System.err.println("[Phonk Edit Mod] Erro ao carregar recursos customizados: " + e.getMessage());
+					e.printStackTrace();
+					customResourcesLoaded = true; // Marca como carregado para não tentar novamente
+				}
+			}
+			
 			// Verifica se a tecla de config foi pressionada
 			if (configKey.wasPressed()) {
 				client.setScreen(new ConfigScreen(client.currentScreen, config));
@@ -284,17 +356,17 @@ public class PhonkEditModClient implements ClientModInitializer {
 		client.setScreen(new InvisiblePauseScreen());
 
 		// 2. Toca um Phonk Aleatório com pitch variável (da config)
-		SoundEvent som = MEME_SOUNDS[random.nextInt(MEME_SOUNDS.length)];
 		float pitchRange = config.pitchMaximo - config.pitchMinimo;
 		float pitchAleatorio = config.pitchMinimo + random.nextFloat() * pitchRange;
-		this.somMemeAtual = PositionedSoundInstance.master(som, pitchAleatorio);
-		client.getSoundManager().play(this.somMemeAtual);
+		
+		// Seleciona e toca o som (mod ou customizado)
+		this.somMemeAtual = selecionarETocarSom(client, pitchAleatorio);
 		
 		// Salva o pitch para calcular batidas
 		currentPitch = pitchAleatorio;
 
 		// 3. Seleciona uma Imagem Aleatória
-		imagemMemeAtual = MEME_IMAGES[random.nextInt(MEME_IMAGES.length)];
+		imagemMemeAtual = selecionarImagemAleatoria();
 		
 		// 4. Seleciona um Texto Aleatório
 		textoMemeAtual = MEME_TEXTS[random.nextInt(MEME_TEXTS.length)];
@@ -516,5 +588,214 @@ public class PhonkEditModClient implements ClientModInitializer {
 	
 	public static float getBeatProgress() {
 		return beatProgress;
+	}
+	
+	/**
+	 * Seleciona e toca um som aleatório baseado no modo configurado (Mod Only, Mix, Custom Only)
+	 * Retorna o SoundInstance que foi tocado
+	 * 
+	 * ATUALIZADO: Agora usa CustomSoundDetector que detecta sons via resource packs!
+	 * Sons customizados devem estar em um resource pack com:
+	 * - assets/phonk-edit-mod/sounds.json
+	 * - Chaves começando com "custom/" (ex: "custom/meu_phonk")
+	 */
+	private net.minecraft.client.sound.SoundInstance selecionarETocarSom(MinecraftClient client, float pitch) {
+		List<SoundEvent> customSounds = CustomSoundDetector.getCustomSounds();
+		
+		switch (config.audioMode) {
+			case MOD_ONLY:
+				// Usa somente sons do mod
+				SoundEvent somMod = MEME_SOUNDS[random.nextInt(MEME_SOUNDS.length)];
+				net.minecraft.client.sound.SoundInstance instanceMod = 
+						PositionedSoundInstance.master(somMod, pitch, config.volumeMusica);
+				client.getSoundManager().play(instanceMod);
+				return instanceMod;
+				
+			case CUSTOM_ONLY:
+				// Usa somente sons customizados (fallback para mod se não houver)
+				if (!customSounds.isEmpty()) {
+					SoundEvent somCustom = customSounds.get(random.nextInt(customSounds.size()));
+					net.minecraft.client.sound.SoundInstance instanceCustom = 
+							PositionedSoundInstance.master(somCustom, pitch, config.volumeMusica);
+					client.getSoundManager().play(instanceCustom);
+					System.out.println("[Phonk Edit Mod] Tocando som customizado via resource pack");
+					return instanceCustom;
+				}
+				// Fallback para sons do mod se não houver customizados
+				System.out.println("[Phonk Edit Mod] Nenhum som customizado encontrado, usando som do mod");
+				SoundEvent somFallback = MEME_SOUNDS[random.nextInt(MEME_SOUNDS.length)];
+				net.minecraft.client.sound.SoundInstance instanceFallback = 
+						PositionedSoundInstance.master(somFallback, pitch, config.volumeMusica);
+				client.getSoundManager().play(instanceFallback);
+				return instanceFallback;
+				
+			case MIX:
+				// Mix: alterna aleatoriamente entre mod e custom
+				List<SoundEvent> allSounds = new ArrayList<>();
+				// Adiciona sons do mod
+				for (SoundEvent sound : MEME_SOUNDS) {
+					allSounds.add(sound);
+				}
+				// Adiciona sons customizados
+				allSounds.addAll(customSounds);
+				
+				if (allSounds.isEmpty()) {
+					// Fallback improvável, mas seguro
+					SoundEvent somDefault = MEME_SOUNDS[0];
+					net.minecraft.client.sound.SoundInstance instanceDefault = 
+							PositionedSoundInstance.master(somDefault, pitch, config.volumeMusica);
+					client.getSoundManager().play(instanceDefault);
+					return instanceDefault;
+				}
+				
+				SoundEvent somMix = allSounds.get(random.nextInt(allSounds.size()));
+				net.minecraft.client.sound.SoundInstance instanceMix = 
+						PositionedSoundInstance.master(somMix, pitch, config.volumeMusica);
+				client.getSoundManager().play(instanceMix);
+				return instanceMix;
+				
+			default:
+				SoundEvent somPadrao = MEME_SOUNDS[random.nextInt(MEME_SOUNDS.length)];
+				net.minecraft.client.sound.SoundInstance instancePadrao = 
+						PositionedSoundInstance.master(somPadrao, pitch, config.volumeMusica);
+				client.getSoundManager().play(instancePadrao);
+				return instancePadrao;
+		}
+	}
+	
+	/**
+	 * Seleciona uma imagem aleatória baseada no modo configurado (Mod Only, Mix, Custom Only)
+	 */
+	private Identifier selecionarImagemAleatoria() {
+		List<Identifier> customImages = CustomResourceManager.getCustomImages();
+		
+		switch (config.imageMode) {
+			case MOD_ONLY:
+				// Usa somente imagens do mod
+				return MEME_IMAGES[random.nextInt(MEME_IMAGES.length)];
+				
+			case CUSTOM_ONLY:
+				// Usa somente imagens customizadas (fallback para mod se não houver)
+				if (!customImages.isEmpty()) {
+					return customImages.get(random.nextInt(customImages.size()));
+				}
+				// Fallback para imagens do mod se não houver customizadas
+				System.out.println("[Phonk Edit Mod] Nenhuma imagem customizada encontrada, usando imagem do mod");
+				return MEME_IMAGES[random.nextInt(MEME_IMAGES.length)];
+				
+			case MIX:
+				// Mix: alterna aleatoriamente entre mod e custom
+				List<Identifier> allImages = new ArrayList<>();
+				// Adiciona imagens do mod
+				for (Identifier image : MEME_IMAGES) {
+					allImages.add(image);
+				}
+				// Adiciona imagens customizadas
+				allImages.addAll(customImages);
+				
+				if (allImages.isEmpty()) {
+					// Fallback improvável, mas seguro
+					return MEME_IMAGES[0];
+				}
+				
+				return allImages.get(random.nextInt(allImages.size()));
+				
+			default:
+				return MEME_IMAGES[random.nextInt(MEME_IMAGES.length)];
+		}
+	}
+	
+	/**
+	 * Recarrega os recursos customizados (chamado do menu de config)
+	 * @param showNotification Se true, mostra popup com resultado
+	 */
+	public static void reloadCustomResources(boolean showNotification) {
+		try {
+			// Primeiro detecta arquivos inválidos
+			int audioErrors = CustomResourceManager.detectInvalidAudioFiles();
+			
+			// Depois carrega recursos e detecta sons
+			CustomResourceManager.loadCustomResources();
+			CustomSoundDetector.detectCustomSounds(); // Re-detecta sons customizados
+			System.out.println("[Phonk Edit Mod] Recursos customizados recarregados!");
+			
+			// Mostra notificação se solicitado
+			if (showNotification && instance != null) {
+				// Contagem real: sons no JSON menos os inválidos
+				int totalSoundsInJson = CustomSoundDetector.getCustomSoundCount();
+				int validAudioCount = Math.max(0, totalSoundsInJson - audioErrors);
+				int imageCount = CustomResourceManager.getCustomImages().size();
+				int imageErrors = CustomResourceManager.getLastImageErrors();
+				
+				// Usa método centralizado para mostrar notificações
+				instance.showResourceNotifications(validAudioCount, audioErrors, imageCount, imageErrors);
+			}
+		} catch (Exception e) {
+			System.err.println("[Phonk Edit Mod] Erro ao recarregar recursos customizados: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Recarrega os recursos customizados (sem notificação)
+	 */
+	public static void reloadCustomResources() {
+		reloadCustomResources(false);
+	}
+	
+	/**
+	 * Mostra notificações toast para recursos carregados/erros com delays apropriados
+	 * para evitar sobreposição.
+	 * 
+	 * @param validAudioCount Número de áudios válidos carregados
+	 * @param audioErrors Número de erros de áudio detectados
+	 * @param imageCount Número de imagens carregadas
+	 * @param imageErrors Número de erros de imagem detectados
+	 */
+	private void showResourceNotifications(int validAudioCount, int audioErrors, int imageCount, int imageErrors) {
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client == null || client.player == null) return;
+		
+		// Mostra toast para áudios válidos
+		if (validAudioCount > 0) {
+			NotificationToast.showAudioLoaded(validAudioCount);
+		}
+		
+		// Mostra toast para erros de áudio (com delay usando scheduler)
+		if (audioErrors > 0) {
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showAudioErrors(audioErrors)
+			), 200, TimeUnit.MILLISECONDS);
+		}
+		
+		// Mostra toast para imagens (se houver)
+		if (imageCount > 0) {
+			// Delay de 400ms ou 200ms para não sobrepor
+			long delay = audioErrors > 0 ? 400 : 200;
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showImagesLoaded(imageCount)
+			), delay, TimeUnit.MILLISECONDS);
+		}
+		
+		// Mostra toast para erros de imagem (com delay)
+		if (imageErrors > 0) {
+			long delay = imageCount > 0 ? 600 : 400;
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showImageErrors(imageErrors)
+			), delay, TimeUnit.MILLISECONDS);
+		}
+	}
+	
+	/**
+	 * Agenda uma tarefa para ser executada após um delay.
+	 * Usa o scheduler interno do mod de forma segura.
+	 * 
+	 * @param task Tarefa a ser executada
+	 * @param delayMs Delay em milissegundos
+	 */
+	public static void scheduleTask(Runnable task, long delayMs) {
+		if (instance != null && instance.scheduler != null) {
+			instance.scheduler.schedule(task, delayMs, TimeUnit.MILLISECONDS);
+		}
 	}
 }

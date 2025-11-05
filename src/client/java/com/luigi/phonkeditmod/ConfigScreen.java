@@ -1,11 +1,19 @@
 package com.luigi.phonkeditmod;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
+import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
+
+import java.awt.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class ConfigScreen extends Screen {
 	private final Screen parent;
@@ -271,6 +279,72 @@ public class ConfigScreen extends Screen {
 				config.volumeMusica = (float) this.value;
 			}
 		});
+		currentY += spacing;
+		
+		// === CUSTOM RESOURCES SETTINGS ===
+		// Linha 1: Open Audio Folder + Audio Mode
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Open Audio Folder"),
+				btn -> {
+					// Abre o resource pack de audios customizados
+					Path minecraftDir = Paths.get(System.getProperty("user.dir"));
+					Path resourcepacksDir = minecraftDir.resolve("resourcepacks");
+					Path tutorialPackDir = resourcepacksDir.resolve("PhonkEdit-CustomSongs");
+					Path customSoundsDir = tutorialPackDir.resolve("assets/phonk-edit-mod/sounds/custom");
+					
+					// Se não existir, cria
+					try {
+						Files.createDirectories(customSoundsDir);
+					} catch (IOException e) {
+						System.err.println("[Phonk Edit Mod] Erro ao criar pasta: " + e.getMessage());
+					}
+					
+					openFolder(customSoundsDir.toFile());
+				}
+		).dimensions(centerX - 150, currentY, 145, 20).build());
+		
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Audio Mode: " + config.audioMode.getDisplayName()),
+				button -> {
+					config.audioMode = config.audioMode.next();
+					button.setMessage(Text.literal("Audio Mode: " + config.audioMode.getDisplayName()));
+				}
+		).dimensions(centerX + 5, currentY, 145, 20).build());
+		currentY += spacing;
+		
+		// Linha 2: Open Images Folder + Image Mode
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Open Images Folder"),
+				btn -> openFolder(CustomResourceManager.getCustomImagesDirectory().toFile())
+		).dimensions(centerX - 150, currentY, 145, 20).build());
+		
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Image Mode: " + config.imageMode.getDisplayName()),
+				button -> {
+					config.imageMode = config.imageMode.next();
+					button.setMessage(Text.literal("Image Mode: " + config.imageMode.getDisplayName()));
+				}
+		).dimensions(centerX + 5, currentY, 145, 20).build());
+		currentY += spacing;
+		
+		// Linha 3: Reload Custom Files (centralizado)
+		this.addDrawableChild(ButtonWidget.builder(
+				Text.literal("Reload Custom Files"),
+				button -> {
+					// Recarrega os resource packs do Minecraft (equivalente ao F3+T)
+					// Isso automaticamente vai disparar o listener que detecta sons e mostra popup
+					MinecraftClient client = MinecraftClient.getInstance();
+					if (client != null) {
+						button.setMessage(Text.literal("⏳ Reloading..."));
+						client.reloadResources();
+						
+						// Reseta a mensagem após 1 segundo usando scheduler
+						PhonkEditModClient.scheduleTask(() -> 
+							client.execute(() -> button.setMessage(Text.literal("Reload Custom Files")))
+						, 1000);
+					}
+				}
+		).dimensions(centerX - 150, currentY, 300, 20).build());
 		currentY += spacing + 10;
 
 		// === VISUAL EFFECTS ===
@@ -464,6 +538,28 @@ public class ConfigScreen extends Screen {
 		config.save();
 		if (this.client != null) {
 			this.client.setScreen(this.parent);
+		}
+	}
+	
+	/**
+	 * Abre uma pasta no explorador de arquivos do sistema
+	 */
+	private void openFolder(java.io.File folder) {
+		try {
+			// Usa o utilitário do Minecraft para abrir URLs/arquivos
+			// Isso funciona cross-platform (Windows, Linux, Mac)
+			Util.getOperatingSystem().open(folder);
+		} catch (Exception e) {
+			System.err.println("[Phonk Edit Mod] Erro ao abrir pasta: " + e.getMessage());
+			
+			// Fallback: tenta abrir usando Desktop API do Java
+			try {
+				if (Desktop.isDesktopSupported()) {
+					Desktop.getDesktop().open(folder);
+				}
+			} catch (IOException ex) {
+				System.err.println("[Phonk Edit Mod] Erro no fallback ao abrir pasta: " + ex.getMessage());
+			}
 		}
 	}
 }

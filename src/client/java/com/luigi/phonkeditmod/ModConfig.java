@@ -36,6 +36,8 @@ public class ModConfig {
 	public float pitchMinimo = 0.2f;
 	public float pitchMaximo = 2.0f;
 	public float volumeMusica = 1.0f;
+	public ResourceMode audioMode = ResourceMode.MOD_ONLY; // Modo de áudio
+	public ResourceMode imageMode = ResourceMode.MOD_ONLY; // Modo de imagem
 	
 	// Visual Effects Settings
 	public int tamanhoIcone = 48; // pixels
@@ -72,6 +74,30 @@ public class ModConfig {
 			GSON.toJson(this, writer);
 		} catch (IOException e) {
 			System.err.println("Erro ao salvar config do Phonk Edit Mod: " + e.getMessage());
+		}
+	}
+	
+	/**
+	 * Enum para definir o modo de uso de recursos (áudio/imagem)
+	 */
+	public enum ResourceMode {
+		MOD_ONLY("Mod Only"),           // Usa somente os recursos do mod
+		MIX("Mix"),                      // Mix: alterna aleatoriamente entre mod e custom
+		CUSTOM_ONLY("Custom Only");     // Usa somente recursos customizados
+		
+		private final String displayName;
+		
+		ResourceMode(String displayName) {
+			this.displayName = displayName;
+		}
+		
+		public String getDisplayName() {
+			return displayName;
+		}
+		
+		public ResourceMode next() {
+			ResourceMode[] values = values();
+			return values[(this.ordinal() + 1) % values.length];
 		}
 	}
 }

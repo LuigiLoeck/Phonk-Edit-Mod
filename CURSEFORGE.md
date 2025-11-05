@@ -6,17 +6,47 @@ Transform your Minecraft gameplay into viral YouTube Shorts content! 💀🎵
 
 Phonk Edit Mod recreates the legendary **"Phonk Edit" meme** that's everywhere on YouTube Shorts and TikTok. You know the one - where the video suddenly pauses, phonk music drops, everything goes black & white, and a skull appears with crazy camera effects? Yeah, THAT one!
 
+Fully Customizable! Press **O** to open config menu!
+
 Now it happens IN YOUR GAME! 🔥
 
-![Banner](docs/images/banner.png)
+![Banner](https://cdn.modrinth.com/data/cached_images/9c0c8db47da4f72bf8733ca69376a0de071beda4_0.webp)
 
 ## 🎬 See It In Action
 
-![Demo](docs/videos/demo.gif)
+![Demo](https://github.com/LuigiLoeck/Phonk-Edit-Mod/raw/prod/docs/videos/demo.gif)
+
+![Effect in game](https://cdn.modrinth.com/data/cached_images/e0939d7f081f060b7212b04bc2850fa2e1a6f572_0.webp)
 
 ---
 
 ## ✨ Features
+
+### 🖼️ **Custom Resources** ✨ NEW!
+
+#### Custom Images
+- **Add your own images** - Place PNG files in `.minecraft/phonk-edit-mod/custom_images/`
+- **Hot-Reload** - Load new images without restarting the game!
+- **3 Modes**:
+  - **Mod Only**: Uses the 10 included skull images
+  - **Mix**: Randomly alternates between mod and custom images
+  - **Custom Only**: Uses only your custom images
+- **Easy Access** - "Open Images Folder" button in config menu
+- **Error Detection** - Toast notifications for invalid files (non-PNG)
+
+#### Custom Audio
+- **Add your own audio** - Create a resource pack with custom phonk songs!
+- **Resource Pack Based** - Uses Minecraft's native sound system (professional approach)
+- **Auto-Generated Pack**: Tutorial resource pack created at `resourcepacks/PhonkEdit-CustomSongs/`
+- **3 Modes**:
+  - **Mod Only**: Uses the 9 included phonk tracks
+  - **Mix**: Randomly alternates between mod and custom audio
+  - **Custom Only**: Uses only your custom audio from resource packs
+- **Hot-Reload** - Press F3+T or click "Reload Custom Files" button
+- **Error Detection** - Toast notifications for invalid audio files (non-OGG)
+- **Requirements**: 
+  - OGG Vorbis format only
+  - Registered in resource pack's `sounds.json` under `"custom/"` keys
 
 ### 🎵 **Epic Audio System**
 - **9 Phonk Tracks** included (royalty-free)
@@ -48,7 +78,15 @@ Press **O** to open config menu:
 - Trigger chance (0-100%)
 - Pitch range (0.2x - 2.0x)
 - Icon size (16-128px)
+- Music volume (0-100%)
+- Effect intensities (zoom/blur/shake: 0.5x-2.0x)
+- **Image Mode** (Mod Only / Mix / Custom Only) ✨ NEW!
+- **Audio Mode** (Mod Only / Mix / Custom Only) ✨ NEW!
 - Toggle each trigger ON/OFF
+- **Quick Access Buttons**:
+  - Open custom images folder
+  - Open custom audio folder (resource pack)
+  - Reload custom files without restarting
 
 ---
 
@@ -120,6 +158,51 @@ Uses **Satin API** for post-processing:
 - Grayscale shader (full-screen B&W)
 - Radial blur shader (beat-synced)
 - Optimized GLSL code
+
+---
+
+## 📋 Changelog
+
+### Version 1.1.0 (Current)
+**Custom Resources Update** ✨
+- ✅ Added custom image support (PNG files)
+- ✅ Added custom audio support via resource packs (OGG Vorbis)
+- ✅ Auto-generated tutorial resource pack
+- ✅ Resource pack auto-activation system
+- ✅ Hot-reload functionality (F3+T or button in config)
+- ✅ Toast notifications for loaded resources
+- ✅ Error detection for invalid files (non-PNG/non-OGG)
+- ✅ Image Mode selector (Mod Only / Mix / Custom Only)
+- ✅ Audio Mode selector (Mod Only / Mix / Custom Only)
+- ✅ "Open Images Folder" button in config
+- ✅ "Open Audio Folder" button in config (opens resource pack)
+- ✅ Achievement-style toast notifications
+- ✅ Configurable effect intensities
+
+**Initial Release Features**
+- 9 built-in phonk tracks
+- 10 skull overlay images
+- Beat-synchronized effects (zoom, blur, shake)
+- Grayscale filter
+- Mobile format black bars
+- Meme text overlays
+- Smart trigger system
+- Fully configurable (Press O)
+- Client-side only (works on servers)
+
+---
+
+## 🚀 Planned Features
+
+### Next Update
+- 🎯 **Minecraft 1.21.10 Support** - Port mod to latest version
+
+### Future Ideas
+- Custom meme text support
+- More built-in phonk tracks
+- Effect presets (Chill / Normal / Extreme)
+- Custom trigger keybind
+- Replay system (record and replay effects)
 
 ---
 
