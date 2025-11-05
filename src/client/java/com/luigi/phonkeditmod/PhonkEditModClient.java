@@ -190,47 +190,8 @@ public class PhonkEditModClient implements ClientModInitializer {
 					int imageCount = CustomResourceManager.getCustomImages().size();
 					int imageErrors = CustomResourceManager.getLastImageErrors();
 					
-					// Mostra toast para áudios válidos
-					if (validAudioCount > 0) {
-						NotificationToast.showAudioLoaded(validAudioCount);
-					}
-					
-					// Mostra toast para erros de áudio (com delay)
-					if (audioErrors > 0) {
-						new Thread(() -> {
-							try {
-								Thread.sleep(200);
-								NotificationToast.showAudioErrors(audioErrors);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
-					
-					// Mostra toast para imagens (se houver)
-					if (imageCount > 0) {
-						// Delay de 400ms para não sobrepor
-						new Thread(() -> {
-							try {
-								Thread.sleep(audioErrors > 0 ? 400 : 200);
-								NotificationToast.showImagesLoaded(imageCount);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
-					
-					// Mostra toast para erros de imagem (com delay)
-					if (imageErrors > 0) {
-						new Thread(() -> {
-							try {
-								Thread.sleep(imageCount > 0 ? 600 : 400);
-								NotificationToast.showImageErrors(imageErrors);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
+					// Usa método centralizado para mostrar notificações
+					showResourceNotifications(validAudioCount, audioErrors, imageCount, imageErrors);
 				}
 			}
 		});
@@ -759,57 +720,15 @@ public class PhonkEditModClient implements ClientModInitializer {
 			System.out.println("[Phonk Edit Mod] Recursos customizados recarregados!");
 			
 			// Mostra notificação se solicitado
-			if (showNotification) {
-				MinecraftClient client = MinecraftClient.getInstance();
-				if (client != null && client.player != null) {
-					// Contagem real: sons no JSON menos os inválidos
-					int totalSoundsInJson = CustomSoundDetector.getCustomSoundCount();
-					int validAudioCount = Math.max(0, totalSoundsInJson - audioErrors);
-					int imageCount = CustomResourceManager.getCustomImages().size();
-					int imageErrors = CustomResourceManager.getLastImageErrors();
-					
-					// Mostra toast para áudios válidos
-					if (validAudioCount > 0) {
-						NotificationToast.showAudioLoaded(validAudioCount);
-					}
-					
-					// Mostra toast para erros de áudio (com delay)
-					if (audioErrors > 0) {
-						new Thread(() -> {
-							try {
-								Thread.sleep(200);
-								NotificationToast.showAudioErrors(audioErrors);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
-					
-					// Mostra toast para imagens (se houver)
-					if (imageCount > 0) {
-						// Delay de 400ms para não sobrepor
-						new Thread(() -> {
-							try {
-								Thread.sleep(audioErrors > 0 ? 400 : 200);
-								NotificationToast.showImagesLoaded(imageCount);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
-					
-					// Mostra toast para erros de imagem (com delay)
-					if (imageErrors > 0) {
-						new Thread(() -> {
-							try {
-								Thread.sleep(imageCount > 0 ? 600 : 400);
-								NotificationToast.showImageErrors(imageErrors);
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
-					}
-				}
+			if (showNotification && instance != null) {
+				// Contagem real: sons no JSON menos os inválidos
+				int totalSoundsInJson = CustomSoundDetector.getCustomSoundCount();
+				int validAudioCount = Math.max(0, totalSoundsInJson - audioErrors);
+				int imageCount = CustomResourceManager.getCustomImages().size();
+				int imageErrors = CustomResourceManager.getLastImageErrors();
+				
+				// Usa método centralizado para mostrar notificações
+				instance.showResourceNotifications(validAudioCount, audioErrors, imageCount, imageErrors);
 			}
 		} catch (Exception e) {
 			System.err.println("[Phonk Edit Mod] Erro ao recarregar recursos customizados: " + e.getMessage());
@@ -822,5 +741,61 @@ public class PhonkEditModClient implements ClientModInitializer {
 	 */
 	public static void reloadCustomResources() {
 		reloadCustomResources(false);
+	}
+	
+	/**
+	 * Mostra notificações toast para recursos carregados/erros com delays apropriados
+	 * para evitar sobreposição.
+	 * 
+	 * @param validAudioCount Número de áudios válidos carregados
+	 * @param audioErrors Número de erros de áudio detectados
+	 * @param imageCount Número de imagens carregadas
+	 * @param imageErrors Número de erros de imagem detectados
+	 */
+	private void showResourceNotifications(int validAudioCount, int audioErrors, int imageCount, int imageErrors) {
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client == null || client.player == null) return;
+		
+		// Mostra toast para áudios válidos
+		if (validAudioCount > 0) {
+			NotificationToast.showAudioLoaded(validAudioCount);
+		}
+		
+		// Mostra toast para erros de áudio (com delay usando scheduler)
+		if (audioErrors > 0) {
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showAudioErrors(audioErrors)
+			), 200, TimeUnit.MILLISECONDS);
+		}
+		
+		// Mostra toast para imagens (se houver)
+		if (imageCount > 0) {
+			// Delay de 400ms ou 200ms para não sobrepor
+			long delay = audioErrors > 0 ? 400 : 200;
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showImagesLoaded(imageCount)
+			), delay, TimeUnit.MILLISECONDS);
+		}
+		
+		// Mostra toast para erros de imagem (com delay)
+		if (imageErrors > 0) {
+			long delay = imageCount > 0 ? 600 : 400;
+			scheduler.schedule(() -> client.execute(() -> 
+				NotificationToast.showImageErrors(imageErrors)
+			), delay, TimeUnit.MILLISECONDS);
+		}
+	}
+	
+	/**
+	 * Agenda uma tarefa para ser executada após um delay.
+	 * Usa o scheduler interno do mod de forma segura.
+	 * 
+	 * @param task Tarefa a ser executada
+	 * @param delayMs Delay em milissegundos
+	 */
+	public static void scheduleTask(Runnable task, long delayMs) {
+		if (instance != null && instance.scheduler != null) {
+			instance.scheduler.schedule(task, delayMs, TimeUnit.MILLISECONDS);
+		}
 	}
 }

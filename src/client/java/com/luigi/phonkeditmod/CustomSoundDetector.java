@@ -61,22 +61,22 @@ public class CustomSoundDetector {
 			
 			Resource resource = resourceOpt.get();
 			
-			// Parse do JSON
-			JsonObject soundsJson = JsonParser.parseReader(
-				new InputStreamReader(resource.getInputStream())
-			).getAsJsonObject();
-			
-			// Procura por chaves que começam com "custom/"
-			for (String key : soundsJson.keySet()) {
-				if (key.startsWith("custom/")) {
-					// Encontrou um som customizado!
-					Identifier soundId = Identifier.of("phonk-edit-mod", key);
-					SoundEvent soundEvent = SoundEvent.of(soundId);
-					
-					customSounds.add(soundEvent);
-					customSoundNames.add(key);
-					
-					System.out.println("[Phonk Edit Mod] Detectado som customizado via resource pack: " + key);
+			// Parse do JSON (usa try-with-resources para garantir fechamento)
+			try (InputStreamReader reader = new InputStreamReader(resource.getInputStream())) {
+				JsonObject soundsJson = JsonParser.parseReader(reader).getAsJsonObject();
+				
+				// Procura por chaves que começam com "custom/"
+				for (String key : soundsJson.keySet()) {
+					if (key.startsWith("custom/")) {
+						// Encontrou um som customizado!
+						Identifier soundId = Identifier.of("phonk-edit-mod", key);
+						SoundEvent soundEvent = SoundEvent.of(soundId);
+						
+						customSounds.add(soundEvent);
+						customSoundNames.add(key);
+						
+						System.out.println("[Phonk Edit Mod] Detectado som customizado via resource pack: " + key);
+					}
 				}
 			}
 			

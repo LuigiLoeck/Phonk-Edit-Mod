@@ -265,10 +265,9 @@ public class TutorialResourcePackGenerator {
 				"       \"sounds\": [ \"phonk-edit-mod:custom/shadowboxing\" ]\n" +
 				"     }\n" +
 				"   }\n" +
-				"5. Enable pack in game\n" +
-				"6. O -> Reload Custom Files\n" +
-				"7. Set Audio Mode: Mix\n" +
-				"8. Play and enjoy!\n" +
+				"5. Press F3+T or O -> Reload Custom Files to reload resources (pack is already enabled!)\n" +
+				"6. O -> Set Audio Mode: Mix\n" +
+				"7. Play and enjoy!\n" +
 				"\n" +
 				"==============================================================================\n";
 		

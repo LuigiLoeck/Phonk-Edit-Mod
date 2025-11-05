@@ -285,7 +285,7 @@ public class ConfigScreen extends Screen {
 		// Linha 1: Open Audio Folder + Audio Mode
 		this.addDrawableChild(ButtonWidget.builder(
 				Text.literal("Open Audio Folder"),
-				button -> {
+				btn -> {
 					// Abre o resource pack de audios customizados
 					Path minecraftDir = Paths.get(System.getProperty("user.dir"));
 					Path resourcepacksDir = minecraftDir.resolve("resourcepacks");
@@ -315,7 +315,7 @@ public class ConfigScreen extends Screen {
 		// Linha 2: Open Images Folder + Image Mode
 		this.addDrawableChild(ButtonWidget.builder(
 				Text.literal("Open Images Folder"),
-				button -> openFolder(CustomResourceManager.getCustomImagesDirectory().toFile())
+				btn -> openFolder(CustomResourceManager.getCustomImagesDirectory().toFile())
 		).dimensions(centerX - 150, currentY, 145, 20).build());
 		
 		this.addDrawableChild(ButtonWidget.builder(
@@ -338,15 +338,10 @@ public class ConfigScreen extends Screen {
 						button.setMessage(Text.literal("⏳ Reloading..."));
 						client.reloadResources();
 						
-						// Reseta a mensagem após 1 segundo
-						new Thread(() -> {
-							try {
-								Thread.sleep(1000);
-								button.setMessage(Text.literal("Reload Custom Files"));
-							} catch (InterruptedException e) {
-								e.printStackTrace();
-							}
-						}).start();
+						// Reseta a mensagem após 1 segundo usando scheduler
+						PhonkEditModClient.scheduleTask(() -> 
+							client.execute(() -> button.setMessage(Text.literal("Reload Custom Files")))
+						, 1000);
 					}
 				}
 		).dimensions(centerX - 150, currentY, 300, 20).build());
