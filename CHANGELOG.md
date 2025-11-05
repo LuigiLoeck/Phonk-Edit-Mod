@@ -5,6 +5,35 @@ All notable changes to Phonk Edit Mod will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-05
+
+### Added
+- **Custom Resources System** 🎨
+  - **Custom Images Support**:
+    - Add your own PNG images to `.minecraft/phonk-edit-mod/custom_images/`
+    - Hot-reload functionality (F3+T or reload button)
+    - Image Mode selector: Mod Only / Mix / Custom Only
+    - "Open Images Folder" button in config menu
+    - Error detection for invalid image formats (non-PNG files)
+  - **Custom Audio Support**:
+    - Resource pack-based audio system (professional approach)
+    - Auto-generated tutorial pack at `resourcepacks/PhonkEdit-CustomSongs/`
+    - Audio Mode selector: Mod Only / Mix / Custom Only
+    - "Open Audio Folder" button in config menu (opens resource pack folder)
+    - Error detection for invalid audio formats (non-OGG files)
+    - OGG Vorbis format requirement
+    - sounds.json integration with `"custom/"` namespace
+  - **Toast Notifications**:
+    - Achievement-style toast notifications (non-invasive)
+    - Success toasts: "X audios loaded", "X images loaded"
+    - Error toasts: "X invalid audio (OGG only!)", "X invalid images (PNG only!)"
+    - Automatic resource pack activation on first launch
+  - **Reload System**:
+    - "Reload Custom Files" button in config menu
+    - F3+T keyboard shortcut support
+    - Detects and counts valid/invalid files
+    - Smart toast sequencing (200ms delays to prevent overlap)
+
 ## [1.0.0] - 2025-10-21
 
 ### Added
@@ -67,9 +96,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned Features
-- Custom beatmap support for precise beat detection
-- More phonk tracks
-- Additional visual effects (chromatic aberration, vignette)
-- Customizable meme texts
-- Multiplayer compatibility testing
-- Performance optimizations
+- **Next Update (1.2.0)**:
+  - Minecraft 1.21.10 support
+- **Future**:
+  - More built-in phonk tracks
+  - Additional visual effects (chromatic aberration, vignette)
+  - Custom meme text support
+  - Effect presets (Chill / Normal / Extreme)
+  - Custom trigger keybind
+  - Replay system (record and replay effects)

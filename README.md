@@ -29,6 +29,10 @@ A Minecraft Fabric mod that recreates the viral **YouTube Shorts "Phonk Edit" me
 - **9 Phonk Sound Tracks** included
 - **Random pitch variation** (0.2x - 2.0x speed)
 - **Beat-synced effects** - faster music = more intense beats!
+- **Custom Audio Support** ✨ NEW!
+  - Add your own OGG audio files
+  - Hot-reload without restarting
+  - 3 modes: Mod Only / Mix / Custom Only
 
 ### 🎨 **Visual Effects**
 - **Grayscale Filter** - Full B&W screen including HUD (Satin API)
@@ -38,6 +42,33 @@ A Minecraft Fabric mod that recreates the viral **YouTube Shorts "Phonk Edit" me
 - **Mobile Format** - Black bars on sides (9:16 aspect ratio)
 - **Random Skull Overlay** - 10 colorful skull images
 - **Meme Text** - 15 random phrases at top ("SIGMA GRINDSET", "COLD AS ICE", etc.)
+
+### 🖼️ **Custom Resources** ✨ NEW!
+
+#### Custom Images
+- **Add your own images** - Place PNG files in `.minecraft/phonk-edit-mod/custom_images/`
+- **Hot-Reload** - Load new images without restarting the game!
+- **3 Modes**:
+  - **Mod Only**: Uses the 10 included skull images
+  - **Mix**: Randomly alternates between mod and custom images
+  - **Custom Only**: Uses only your custom images
+- **Easy Access** - "Open Images Folder" button in config menu
+- **Error Detection** - Toast notifications for invalid files (non-PNG) ✨ NEW!
+
+#### Custom Audio
+- **Add your own audio** - Create a resource pack with custom phonk songs!
+- **3 Modes**:
+  - **Mod Only**: Uses the 9 included phonk tracks
+  - **Mix**: Randomly alternates between mod and custom audio
+  - **Custom Only**: Uses only your custom audio from resource packs
+- **Hot-Reload** - Press F3+T or "Reload Custom Files" button
+- **Auto-Generated Pack**: Tutorial resource pack created at `resourcepacks/PhonkEdit-CustomSongs/`
+- **Error Detection** - Toast notifications for invalid audio files (non-OGG) ✨ NEW!
+- **Requirements**: 
+  - OGG Vorbis format only
+  - Registered in resource pack's `sounds.json` under `"custom/"` keys
+  - Example: `"custom/my_phonk": { "sounds": ["phonk-edit-mod:custom/my_phonk"] }`
+
 
 ![Effect Screenshot](docs/images/effect.png)
 *The full effect in action - grayscale, blur, zoom, skull overlay, and meme text!*
@@ -53,7 +84,13 @@ A Minecraft Fabric mod that recreates the viral **YouTube Shorts "Phonk Edit" me
   - Music volume (0-100%)
   - Icon size (16-128px)
   - Effect intensities (zoom/blur/shake: 0.5x-2.0x)
+  - **Image Mode** (Mod Only / Mix / Custom Only) ✨ NEW!
+  - **Audio Mode** (Mod Only / Mix / Custom Only) ✨ NEW!
 - **Toggle Switches** for triggers and individual effects
+- **Quick Access Buttons**:
+  - Open custom images folder
+  - Open custom audio folder ✨ NEW!
+  - Reload custom files without restarting
 - Settings saved to `config/phonk-edit-mod.json`
 
 ![Config Menu](docs/images/craftingtable.png)
@@ -92,6 +129,20 @@ Just play normally! The mod will trigger randomly or when you perform actions.
 3. Adjust sliders and toggles
 4. Settings save automatically
 
+### Adding Custom Resources
+#### Custom Images:
+1. Click "Open Images Folder" in config menu (or navigate to `.minecraft/phonk-edit-mod/custom_images/`)
+2. Add your PNG files (512x512 recommended)
+3. Press F3+T or click "Reload Custom Files"
+4. Toast notification will show: "X images loaded" ✅ or "X invalid images (PNG only!)" ❌
+
+#### Custom Audio:
+1. Click "Open Audio Folder" in config menu (opens `resourcepacks/PhonkEdit-CustomSongs/`)
+2. Place OGG files in `assets/phonk-edit-mod/sounds/custom/`
+3. Edit `sounds.json` to register your sounds under `"custom/"` namespace
+4. Press F3+T or click "Reload Custom Files"
+5. Toast notification will show: "X audios loaded" ✅ or "X invalid audio (OGG only!)" ❌
+
 ### Config File Location
 `<minecraft_folder>/config/phonk-edit-mod.json`
 
@@ -110,23 +161,27 @@ Built JAR will be in `build/libs/`
 src/
 ├── client/
 │   ├── java/com/luigi/phonkeditmod/
-│   │   ├── PhonkEditModClient.java    # Main client logic
-│   │   ├── ConfigScreen.java          # GUI configuration
-│   │   ├── ModConfig.java             # Config data model
-│   │   ├── InvisiblePauseScreen.java  # Transparent pause
+│   │   ├── PhonkEditModClient.java          # Main client logic
+│   │   ├── ConfigScreen.java                # GUI configuration
+│   │   ├── ModConfig.java                   # Config data model
+│   │   ├── CustomResourceManager.java       # Image loading & validation
+│   │   ├── CustomSoundDetector.java         # Resource pack audio detection
+│   │   ├── TutorialResourcePackGenerator.java # Auto-generate tutorial pack
+│   │   ├── NotificationToast.java           # Achievement-style notifications
+│   │   ├── InvisiblePauseScreen.java        # Transparent pause
 │   │   └── mixin/
-│   │       ├── GameRendererMixin.java # Camera effects
-│   │       └── CameraAccessor.java    # Camera access
+│   │       ├── GameRendererMixin.java       # Camera effects
+│   │       └── CameraAccessor.java          # Camera access
 │   └── resources/
 │       └── assets/phonk-edit-mod/
-│           ├── sounds/                 # 9 phonk tracks
-│           ├── textures/gui/           # 10 skull images
-│           └── shaders/                # Grayscale & blur shaders
+│           ├── sounds/                       # 9 phonk tracks
+│           ├── textures/gui/                 # 10 skull images + icon
+│           └── shaders/                      # Grayscale & blur shaders
 └── main/
     ├── java/com/luigi/phonkeditmod/
-    │   └── PhonkEditMod.java          # Common entry point
+    │   └── PhonkEditMod.java                # Common entry point
     └── resources/
-        └── fabric.mod.json             # Mod metadata
+        └── fabric.mod.json                   # Mod metadata
 ```
 
 ### Dependencies
@@ -142,7 +197,24 @@ src/
 
 ## 📝 Changelog
 
-### Version 1.0.0
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
+### Version 1.1.0 (Latest) - 2025-11-05
+**Custom Resources Update** ✨
+- Added custom image support (PNG files)
+- Added custom audio support via resource packs (OGG Vorbis)
+- Auto-generated tutorial resource pack
+- Resource pack auto-activation system
+- Hot-reload functionality (F3+T or button in config)
+- Achievement-style toast notifications for loaded resources
+- Error detection for invalid files (non-PNG/non-OGG)
+- Image Mode selector (Mod Only / Mix / Custom Only)
+- Audio Mode selector (Mod Only / Mix / Custom Only)
+- "Open Images Folder" button in config
+- "Open Audio Folder" button in config (opens resource pack)
+- Configurable effect intensities (zoom/blur/shake)
+
+### Version 1.0.0 - 2025-10-21
 - Initial release
 - 9 phonk sound tracks
 - 10 skull overlay images
